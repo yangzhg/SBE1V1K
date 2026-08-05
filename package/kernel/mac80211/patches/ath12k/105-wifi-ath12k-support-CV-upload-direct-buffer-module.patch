@@ -1,0 +1,32 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Rajat Soni <quic_rajson@quicinc.com>
+Date: Mon, 30 Oct 2023 15:26:48 -0700
+Subject: [PATCH] wifi: ath12k: support CV upload direct buffer module
+
+Firmware can advertise direct-buffer module ID 2 for
+WMI_CONFIG_MODULE_CV_UPLOAD.  Without the corresponding host enum value,
+ath12k rejects the service-ready capability and fails the complete TLV
+parse.
+
+This was tested upstream on QCN9274 and is also required by the SBE1V1K
+QCN9274 firmware WLAN.WBE.1.6-01243-QCAHKSWPL_SILICONZ-1.
+
+Tested-on: QCN9274 hw2.0 PCI WLAN.WBE.1.1.1-00188-QCAHKSWPL_SILICONZ-1
+Tested-on: QCN9274 hw2.0 PCI WLAN.WBE.1.0.1-00029-QCAHKSWPL_SILICONZ-1
+Signed-off-by: Rajat Soni <quic_rajson@quicinc.com>
+Signed-off-by: Raj Kumar Bhagat <quic_rajkbhag@quicinc.com>
+Link: https://lists.infradead.org/pipermail/ath12k/2023-October/000889.html
+---
+ drivers/net/wireless/ath/ath12k/wmi.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/drivers/net/wireless/ath/ath12k/wmi.h
++++ b/drivers/net/wireless/ath/ath12k/wmi.h
+@@ -2330,6 +2330,7 @@ enum wmi_direct_buffer_module {
+ 	WMI_DIRECT_BUF_SPECTRAL = 0,
+ 	WMI_DIRECT_BUF_CFR = 1,
++	WMI_DIRECT_BUF_CV_UPLOAD = 2,
+ 
+ 	/* keep it last */
+ 	WMI_DIRECT_BUF_MAX
+ };
