@@ -1,0 +1,85 @@
+From 7cc986c04a9b07d91684f7e326fa5b960215bc97 Mon Sep 17 00:00:00 2001
+From: Roopni Devanathan <quic_rdevanat@quicinc.com>
+Date: Fri, 24 Oct 2025 10:16:48 +0530
+Subject: [PATCH] wifi: cfg80211: Add debugfs support for multi-radio wiphy
+
+In multi-radio wiphy architecture, where a single wiphy can have
+multiple radios tied to it, radio specific configuration parameters
+and global wiphy parameters are maintained for the entire physical
+device and common to all radios. But, each radio in a wiphy can have
+different values for each radio configuration parameter, like RTS
+threshold. With the current debugfs directory structure, the values
+of global wiphy configuration parameters can be viewed, but, values
+of individual radio configuration parameters cannot be viewed, as
+radio specific configuration parameters are not maintained, separately.
+
+To address this, in addition to maintaining global wiphy configuration
+parameters common to all radios, create separate debugfs directories
+for each radio in a wiphy to maintain parameters corresponding to that
+radio in this directory.
+
+In implementation, maintain a dentry structure in wiphy_radio_cfg, a
+structure containing radio configurations of a wiphy. This struct is
+maintained to denote per-radio configurations of a wiphy. Create
+separate directories representing each radio within phy#X directory in
+debugfs during wiphy registration.
+
+Sample directory structure with this change:
+ls /sys/kernel/debug/ieee80211/phy0/radio
+radio0/ radio1/ radio2/
+
+Signed-off-by: Roopni Devanathan <quic_rdevanat@quicinc.com>
+Link: https://patch.msgid.link/20251024044649.483557-2-quic_rdevanat@quicinc.com
+Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+---
+ include/net/cfg80211.h |  4 ++++
+ net/wireless/core.c    | 15 +++++++++++++++
+ 2 files changed, 19 insertions(+)
+
+--- a/include/net/cfg80211.h
++++ b/include/net/cfg80211.h
+@@ -5684,9 +5684,13 @@ struct wiphy_iftype_akm_suites {
+  *
+  * @rts_threshold: RTS threshold (dot11RTSThreshold);
+  *	-1 (default) = RTS/CTS disabled
++ * @radio_debugfsdir: Pointer to debugfs directory containing the radio-
++ *	specific parameters.
++ *	NULL (default) = Debugfs directory not created
+  */
+ struct wiphy_radio_cfg {
+ 	u32 rts_threshold;
++	struct dentry *radio_debugfsdir;
+ };
+ 
+ /**
+--- a/net/wireless/core.c
++++ b/net/wireless/core.c
+@@ -34,6 +34,9 @@
+ /* name for sysfs, %d is appended */
+ #define PHY_NAME "phy"
+ 
++/* maximum length of radio debugfs directory name */
++#define RADIO_DEBUGFSDIR_MAX_LEN	8
++
+ MODULE_AUTHOR("Johannes Berg");
+ MODULE_LICENSE("GPL");
+ MODULE_DESCRIPTION("wireless configuration support");
+@@ -1034,6 +1037,18 @@ int wiphy_register(struct wiphy *wiphy)
+ 	/* add to debugfs */
+ 	rdev->wiphy.debugfsdir = debugfs_create_dir(wiphy_name(&rdev->wiphy),
+ 						    ieee80211_debugfs_dir);
++	if (wiphy->n_radio > 0) {
++		int idx;
++		char radio_name[RADIO_DEBUGFSDIR_MAX_LEN];
++
++		for (idx = 0; idx < wiphy->n_radio; idx++) {
++			scnprintf(radio_name, sizeof(radio_name), "radio%d",
++				  idx);
++			wiphy->radio_cfg[idx].radio_debugfsdir =
++				debugfs_create_dir(radio_name,
++						   rdev->wiphy.debugfsdir);
++		}
++	}
+ 
+ 	cfg80211_debugfs_rdev_add(rdev);
+ 	nl80211_notify_wiphy(rdev, NL80211_CMD_NEW_WIPHY);
