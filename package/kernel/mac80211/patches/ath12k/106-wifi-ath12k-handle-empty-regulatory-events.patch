@@ -1,0 +1,148 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+Subject: [PATCH] wifi: ath12k: handle empty regulatory events
+
+The extended regulatory parser rejects an event with no rules before
+copying its PHY ID and firmware status.  The event handler consequently
+cannot route the response to the radio that is waiting for it, emits a
+WARN_ON stack trace, and leaves regd_update_completed unsignalled.
+
+Copy the fixed event metadata before validating its variable rule payload.
+Treat an empty event for a valid PHY as a handled response: retain the last
+valid regulatory domain and complete the pending update.  A failed country
+request is allowed to carry no rules; a success response with no rules
+remains diagnosable through the structured warning and is not used to
+create a permissive domain.
+
+Also assign pdev_idx before status validation so firmware-rejected country
+updates follow the existing DROP path while still completing their waiter.
+---
+ drivers/net/wireless/ath/ath12k/wmi.c | 89 ++++++++++++++++++++-------------
+ 1 file changed, 53 insertions(+), 36 deletions(-)
+
+--- a/drivers/net/wireless/ath/ath12k/wmi.c
++++ b/drivers/net/wireless/ath/ath12k/wmi.c
+@@ -5699,7 +5699,7 @@ static int ath12k_pull_reg_chan_list_ext
+ 	u32 num_6g_reg_rules_ap[WMI_REG_CURRENT_MAX_AP_TYPE];
+ 	u32 num_6g_reg_rules_cl[WMI_REG_CURRENT_MAX_AP_TYPE][WMI_REG_MAX_CLIENT_TYPE];
+ 	u8 num_invalid_5ghz_ext_rules;
+-	u32 total_reg_rules = 0;
++	u32 status_code, total_reg_rules = 0;
+ 	int ret, i, j;
+ 
+ 	ath12k_dbg(ab, ATH12K_DBG_WMI, "processing regulatory ext channel list\n");
+@@ -5718,6 +5718,40 @@ static int ath12k_pull_reg_chan_list_ext
+ 		return -EPROTO;
+ 	}
+ 
++	memcpy(reg_info->alpha2, &ev->alpha2, REG_ALPHA2_LEN);
++	reg_info->dfs_region = le32_to_cpu(ev->dfs_region);
++	reg_info->phybitmap = le32_to_cpu(ev->phybitmap);
++	reg_info->num_phy = le32_to_cpu(ev->num_phy);
++	reg_info->phy_id = le32_to_cpu(ev->phy_id);
++	reg_info->ctry_code = le32_to_cpu(ev->country_id);
++	reg_info->reg_dmn_pair = le32_to_cpu(ev->domain_code);
++
++	status_code = le32_to_cpu(ev->status_code);
++	switch (status_code) {
++	case WMI_REG_SET_CC_STATUS_PASS:
++		reg_info->status_code = REG_SET_CC_STATUS_PASS;
++		break;
++	case WMI_REG_CURRENT_ALPHA2_NOT_FOUND:
++		reg_info->status_code = REG_CURRENT_ALPHA2_NOT_FOUND;
++		break;
++	case WMI_REG_INIT_ALPHA2_NOT_FOUND:
++		reg_info->status_code = REG_INIT_ALPHA2_NOT_FOUND;
++		break;
++	case WMI_REG_SET_CC_CHANGE_NOT_ALLOWED:
++		reg_info->status_code = REG_SET_CC_CHANGE_NOT_ALLOWED;
++		break;
++	case WMI_REG_SET_CC_STATUS_NO_MEMORY:
++		reg_info->status_code = REG_SET_CC_STATUS_NO_MEMORY;
++		break;
++	case WMI_REG_SET_CC_STATUS_FAIL:
++		reg_info->status_code = REG_SET_CC_STATUS_FAIL;
++		break;
++	default:
++		ath12k_warn(ab, "unknown regulatory status %u\n", status_code);
++		reg_info->status_code = REG_SET_CC_STATUS_FAIL;
++		break;
++	}
++
+ 	reg_info->num_2g_reg_rules = le32_to_cpu(ev->num_2g_reg_rules);
+ 	reg_info->num_5g_reg_rules = le32_to_cpu(ev->num_5g_reg_rules);
+ 	reg_info->num_6g_reg_rules_ap[WMI_REG_INDOOR_AP] =
+@@ -5785,39 +5819,15 @@ static int ath12k_pull_reg_chan_list_ext
+ 	}
+ 
+ 	if (!total_reg_rules) {
+-		ath12k_warn(ab, "No reg rules available\n");
+-		kfree(tb);
+-		return -EINVAL;
+-	}
+-
+-	memcpy(reg_info->alpha2, &ev->alpha2, REG_ALPHA2_LEN);
+-
+-	reg_info->dfs_region = le32_to_cpu(ev->dfs_region);
+-	reg_info->phybitmap = le32_to_cpu(ev->phybitmap);
+-	reg_info->num_phy = le32_to_cpu(ev->num_phy);
+-	reg_info->phy_id = le32_to_cpu(ev->phy_id);
+-	reg_info->ctry_code = le32_to_cpu(ev->country_id);
+-	reg_info->reg_dmn_pair = le32_to_cpu(ev->domain_code);
+-
+-	switch (le32_to_cpu(ev->status_code)) {
+-	case WMI_REG_SET_CC_STATUS_PASS:
+-		reg_info->status_code = REG_SET_CC_STATUS_PASS;
+-		break;
+-	case WMI_REG_CURRENT_ALPHA2_NOT_FOUND:
+-		reg_info->status_code = REG_CURRENT_ALPHA2_NOT_FOUND;
+-		break;
+-	case WMI_REG_INIT_ALPHA2_NOT_FOUND:
+-		reg_info->status_code = REG_INIT_ALPHA2_NOT_FOUND;
+-		break;
+-	case WMI_REG_SET_CC_CHANGE_NOT_ALLOWED:
+-		reg_info->status_code = REG_SET_CC_CHANGE_NOT_ALLOWED;
+-		break;
+-	case WMI_REG_SET_CC_STATUS_NO_MEMORY:
+-		reg_info->status_code = REG_SET_CC_STATUS_NO_MEMORY;
+-		break;
+-	case WMI_REG_SET_CC_STATUS_FAIL:
+-		reg_info->status_code = REG_SET_CC_STATUS_FAIL;
+-		break;
++		ath12k_warn(ab,
++			    "empty regulatory event: cc %c%c status %u phy %u/%u rules %u/%u/%u\n",
++			    reg_info->alpha2[0], reg_info->alpha2[1], status_code,
++			    reg_info->phy_id, reg_info->num_phy, num_2g_reg_rules,
++			    num_5g_reg_rules,
++			    total_reg_rules - num_2g_reg_rules - num_5g_reg_rules);
++
++		kfree(tb);
++		return -ENODATA;
+ 	}
+ 
+ 	reg_info->is_ext_reg_event = true;
+@@ -6775,8 +6786,16 @@ static int ath12k_reg_chan_list_event(st
+ 	}
+ 
+ 	ret = ath12k_pull_reg_chan_list_ext_update_ev(ab, skb, reg_info);
++	if ((!ret || ret == -ENODATA) && reg_info->phy_id < ab->num_radios)
++		pdev_idx = reg_info->phy_id;
++
+ 	if (ret) {
+-		ath12k_warn(ab, "failed to extract regulatory info from received event\n");
++		if (ret == -ENODATA && pdev_idx != 255) {
++			/* Keep the last valid regdomain, but finish this update. */
++			ret = ATH12K_REG_STATUS_VALID;
++		} else {
++			ath12k_warn(ab, "failed to extract regulatory info from received event\n");
++		}
+ 		goto mem_free;
+ 	}
+ 
+@@ -6796,7 +6815,6 @@ static int ath12k_reg_chan_list_event(st
+ 	}
+ 
+ 	/* free old reg_info if it exist */
+-	pdev_idx = reg_info->phy_id;
+ 	if (ab->reg_info[pdev_idx]) {
+ 		ath12k_reg_reset_reg_info(ab->reg_info[pdev_idx]);
+ 		kfree(ab->reg_info[pdev_idx]);
