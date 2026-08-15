@@ -659,6 +659,7 @@ ucidef_set_wireless() {
 	local ssid="$2"
 	local encryption="$3"
 	local key="$4"
+	local disabled="$5"
 
 	case "$band" in
 	all|2g|5g|6g) ;;
@@ -673,6 +674,7 @@ ucidef_set_wireless() {
 					json_add_string ssid "$ssid"
 					[ -n "$encryption" ] && json_add_string encryption "$encryption"
 					[ -n "$key" ] && json_add_string key "$key"
+					[ -n "$disabled" ] && json_add_boolean disabled "$disabled"
 				json_select ..
 			json_select ..
 		json_select ..

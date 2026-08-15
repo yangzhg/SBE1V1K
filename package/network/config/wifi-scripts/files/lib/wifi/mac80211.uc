@@ -78,7 +78,7 @@ for (let phy_name, phy in board.wlan) {
 
 		band_name = lc(band_name);
 
-		let country, encryption, defaults, num_global_macaddr;
+		let country, disabled, encryption, defaults, num_global_macaddr;
 		if (band_name == '6g') {
 			country = '00';
 			encryption = 'owe';
@@ -92,6 +92,7 @@ for (let phy_name, phy in board.wlan) {
 				defaults = null;
 			num_global_macaddr = board.wlan.defaults.ssids?.[band_name]?.mac_count;
 		}
+		disabled = defaults ? (defaults.disabled ?? false) : true;
 
 		if (length(info.radios) > 0)
 			id += `\nset ${s}.radio='${radio.index}'`;
@@ -112,7 +113,7 @@ set ${si}.mode='ap'
 set ${si}.ssid='${defaults?.ssid || "OpenWrt"}'
 set ${si}.encryption='${defaults?.encryption || encryption}'
 set ${si}.key='${defaults?.key || ""}'
-set ${si}.disabled='${defaults ? 0 : 1}'
+set ${si}.disabled='${disabled ? 1 : 0}'
 
 `);
 		config[name] = {};

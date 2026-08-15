@@ -49,8 +49,9 @@ OpenWrt 官方 `main`，设备、BDF、无线修复、构建配置和文档按�
    - 状态：已合入 OpenWrt 官方 `main`，本仓库直接采用官方版本。
    - 用途：把多个可能的 PCI 路径写入 `board.json`，避免 PCI 枚举变化后无线配置重复或消失。
 3. `ipq-wifi: vendor Askey SBE1V1K BDF`
-   - 来源：[firmware_qca-wireless PR #123](https://github.com/openwrt/firmware_qca-wireless/pull/123)，提交 `0d2b3c0c42b5cae549e59f1a3f003216ed4d6c4b`
-   - BDF SHA-256：`5ed8477ace2ce31236d756de24f31e7169acc69d8df18e5b81e7fdea0715e97a`
+   - 来源：[firmware_qca-wireless PR #123](https://github.com/openwrt/firmware_qca-wireless/pull/123)，提交 `74b0985b1d836eb4df868c031f8b8eecbd607772`
+   - BDF SHA-256：`57ef9bfb61a00bbf5d1d7e4ea7703ee06cdc451b2264f6007cae7c3d8a17fac5`
+   - 版本：来自 2026 年 2 月厂商固件的新版三频校准数据。
    - 用途：在 BDF PR 合并前让三频 Wi-Fi 固件有正确的板级数据。
 
 已合入基线而无需额外补丁的关键依赖：

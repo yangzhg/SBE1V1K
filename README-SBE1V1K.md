@@ -13,7 +13,8 @@
 - 多候选 PCI 路径支持已经作为 OpenWrt 官方提交 `2c64257627` 合入，仓库不再
   携带早期本地版本。
 - QCN9274 BDF 固定自 firmware_qca-wireless PR #123 的提交
-  `0d2b3c0c42b5cae549e59f1a3f003216ed4d6c4b`。
+  `74b0985b1d836eb4df868c031f8b8eecbd607772`，对应 2026 年 2 月厂商
+  固件中的新版三频校准数据。
 - CV upload 和空 regulatory event 两个 ath12k 修复保持为独立提交，方便单独
   测试、回退和后续上游化。
 

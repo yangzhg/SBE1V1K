@@ -171,6 +171,19 @@
 	status = "okay";
 };
 
+/*
+ * No upstream driver currently binds these QCE nodes. Leaving them enabled
+ * prevents the GCC clock controller from completing sync_state(), which in
+ * turn leaves cpufreq-dt stuck in deferred probe.
+ */
+&crypto {
+	status = "disabled";
+};
+
+&cryptobam {
+	status = "disabled";
+};
+
 &rpm_requests {
 	regulators {
 		compatible = "qcom,rpm-mp5496-regulators";
@@ -186,13 +199,6 @@
 		*/
 			regulator-min-microvolt = <725000>;
 			regulator-max-microvolt = <1075000>;
-		};
-
-		mp5496_l5: l5 {
-			regulator-min-microvolt = <1800000>;
-			regulator-max-microvolt = <1800000>;
-			regulator-always-on;
-			regulator-boot-on;
 		};
 	};
 };
