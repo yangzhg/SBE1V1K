@@ -1,0 +1,32 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Harish Rachakonda <rachakon@qti.qualcomm.com>
+Date: Mon, 9 Jun 2025 10:45:27 +0530
+Subject: [PATCH] wifi: ath12k: support Wi-Fi radar direct buffer module
+
+Firmware can advertise direct-buffer module ID 3 for
+WMI_CONFIG_MODULE_WIFI_RADAR.  Without the corresponding host enum value,
+ath12k rejects the service-ready capability and fails the complete TLV
+parse.
+
+The QCN9274 firmware used by the SBE1V1K advertises this module on all
+three radios, so add the known module explicitly instead of ignoring
+unknown direct-buffer capabilities.
+
+Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
+Signed-off-by: Yang Zhengguo <yangzhgg@gmail.com>
+Link: https://github.com/Telecominfraproject/wlan-ap/blob/9e5ede4d16ab7f1beac6e052a773c7958e68638e/feeds/qca-wifi-7/mac80211/patches-qca/ath12k/0342-QSDK-CP-add-WMI_CONFIG_MODULE_WIFI_RADAR-to-enum-wmi.patch
+---
+ drivers/net/wireless/ath/ath12k/wmi.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/drivers/net/wireless/ath/ath12k/wmi.h
++++ b/drivers/net/wireless/ath/ath12k/wmi.h
+@@ -2331,6 +2331,7 @@ enum wmi_direct_buffer_module {
+ 	WMI_DIRECT_BUF_SPECTRAL = 0,
+ 	WMI_DIRECT_BUF_CFR = 1,
+ 	WMI_DIRECT_BUF_CV_UPLOAD = 2,
++	WMI_CONFIG_MODULE_WIFI_RADAR = 3,
+ 
+ 	/* keep it last */
+ 	WMI_DIRECT_BUF_MAX
+ };
