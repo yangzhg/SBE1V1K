@@ -37,10 +37,9 @@ ipq95xx_setup_wlan()
 	case "$board" in
 	askey,sbe1v1k)
 		ucidef_add_wlan "$DEV_PATH_PCIE0" "$DEV_PATH_PCIE1" "$DEV_PATH_PCIE2"
-		ucidef_set_country "CN"
-		ucidef_set_wireless "2g" "OpenWrt-2.4G" "" "" 0
-		ucidef_set_wireless "5g" "OpenWrt-5G" "" "" 1
-		ucidef_set_wireless "6g" "OpenWrt-6G" "owe" "" 1
+		ucidef_set_wireless "2g" "OpenWrt-2.4G"
+		ucidef_set_wireless "5g" "OpenWrt-5G"
+		ucidef_set_wireless "6g" "OpenWrt-6G" "owe"
 		;;
 	esac
 }

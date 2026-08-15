@@ -78,7 +78,7 @@ for (let phy_name, phy in board.wlan) {
 
 		band_name = lc(band_name);
 
-		let country, disabled, encryption, defaults, num_global_macaddr;
+		let country, encryption, defaults, num_global_macaddr;
 		if (band_name == '6g') {
 			country = '00';
 			encryption = 'owe';
@@ -88,11 +88,11 @@ for (let phy_name, phy in board.wlan) {
 		if (board.wlan.defaults) {
 			defaults = board.wlan.defaults.ssids?.[band_name]?.ssid ? board.wlan.defaults.ssids?.[band_name] : board.wlan.defaults.ssids?.all;
 			country = board.wlan.defaults.country;
-			if (!country && band_name != '2g')
-				defaults = null;
 			num_global_macaddr = board.wlan.defaults.ssids?.[band_name]?.mac_count;
 		}
-		disabled = defaults ? (defaults.disabled ?? false) : true;
+		// Preserve board defaults, but do not enable 5/6 GHz without a
+		// deployment-specific country code.
+		let disabled = !defaults || (!country && band_name != '2g');
 
 		if (length(info.radios) > 0)
 			id += `\nset ${s}.radio='${radio.index}'`;
