@@ -1,0 +1,26 @@
+From: Yang Zhengguo <yangzhgg@gmail.com>
+Date: Sat, 15 Aug 2026 12:00:00 +0800
+Subject: [PATCH] arm64: dts: qcom: ipq9574: add SDHCI core reset
+
+The SDHCI-MSM driver can pulse the GCC block reset before enabling the
+controller clocks.  IPQ9574 already exposes GCC_SDCC_BCR, but the SDHC
+node does not reference it, leaving the controller in bootloader state.
+This can make the first SDHCI software reset time out intermittently.
+
+Describe the reset so the driver starts the controller from a known
+state before registering the host.
+
+Signed-off-by: Yang Zhengguo <yangzhgg@gmail.com>
+---
+ arch/arm64/boot/dts/qcom/ipq9574.dtsi | 1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/arch/arm64/boot/dts/qcom/ipq9574.dtsi
++++ b/arch/arm64/boot/dts/qcom/ipq9574.dtsi
+@@ -495,6 +495,7 @@
+ 				 <&gcc GCC_SDCC1_ICE_CORE_CLK>;
+ 			clock-names = "iface", "core", "xo", "ice";
++			resets = <&gcc GCC_SDCC_BCR>;
+ 			non-removable;
+ 			supports-cqe;
+ 			status = "disabled";
