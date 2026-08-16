@@ -1,0 +1,148 @@
+From 0ec4b904be72f78ba6ce6bb9a8aaf2eb6b9b1004 Mon Sep 17 00:00:00 2001
+From: Roopni Devanathan <roopni.devanathan@oss.qualcomm.com>
+Date: Thu, 2 Apr 2026 10:44:02 +0530
+Subject: [PATCH] wifi: ath12k: Create symlink for each radio in a wiphy
+
+In single-wiphy design, when more than one radio is registered as a
+single-wiphy in the mac80211 layer, duplicate debugfs entries are
+created for the wiphy symlink and for SoC files such as
+simulate_fw_crash and device_dp_stats.
+
+Create the ath12k symlink for each radio in the per-radio debugfs
+directories provided by cfg80211, while retaining the existing top-level
+symlink for radio 0. Also create the SoC debugfs files exactly once from
+ath12k_core_pdev_create().
+
+Tested-on: QCN9274 hw2.0 PCI WLAN.WBE.1.4.1-00199-QCAHKSWPL_SILICONZ-1
+Tested-on: WCN7850 hw2.0 PCI WLAN.HMT.1.0.c5-00481-QCAHMTSWPL_V1.0_V2.0_SILICONZ-3
+
+Co-developed-by: Harshitha Prem <harshitha.prem@oss.qualcomm.com>
+Signed-off-by: Harshitha Prem <harshitha.prem@oss.qualcomm.com>
+Signed-off-by: Roopni Devanathan <roopni.devanathan@oss.qualcomm.com>
+Reviewed-by: Baochen Qiang <baochen.qiang@oss.qualcomm.com>
+Reviewed-by: Rameshkumar Sundaram <rameshkumar.sundaram@oss.qualcomm.com>
+Link: https://patch.msgid.link/20260402051402.3903795-1-roopni.devanathan@oss.qualcomm.com
+Signed-off-by: Jeff Johnson <jeff.johnson@oss.qualcomm.com>
+---
+ drivers/net/wireless/ath/ath12k/core.c    |  4 ++--
+ drivers/net/wireless/ath/ath12k/core.h    |  2 ++
+ drivers/net/wireless/ath/ath12k/debugfs.c | 29 +++++++++++++++++++----
+ drivers/net/wireless/ath/ath12k/mac.c     |  2 +-
+ 4 files changed, 29 insertions(+), 8 deletions(-)
+
+--- a/drivers/net/wireless/ath/ath12k/core.c
++++ b/drivers/net/wireless/ath/ath12k/core.c
+@@ -829,8 +829,6 @@ static int ath12k_core_soc_create(struct
+ 		goto err_qmi_deinit;
+ 	}
+ 
+-	ath12k_debugfs_pdev_create(ab);
+-
+ 	return 0;
+ 
+ err_qmi_deinit:
+@@ -882,13 +880,15 @@ static int ath12k_core_pdev_create(struc
+ 	ret = ath12k_thermal_register(ab);
+ 	if (ret) {
+ 		ath12k_err(ab, "could not register thermal device: %d\n", ret);
+ 		goto err_dp_pdev_free;
+ 	}
+ 
++	ath12k_debugfs_pdev_create(ab);
++
+ 	return 0;
+ 
+ err_dp_pdev_free:
+ 	ath12k_dp_pdev_free(ab);
+ 	return ret;
+ }
+ 
+--- a/drivers/net/wireless/ath/ath12k/core.h
++++ b/drivers/net/wireless/ath/ath12k/core.h
+@@ -656,6 +656,7 @@ struct ath12k_dbg_htt_stats {
+ struct ath12k_debug {
+ 	struct dentry *debugfs_pdev;
+ 	struct dentry *debugfs_pdev_symlink;
++	struct dentry *debugfs_pdev_symlink_default;
+ 	struct ath12k_dbg_htt_stats htt_stats;
+ 	enum wmi_halphy_ctrl_path_stats_id tpc_stats_type;
+ 	bool tpc_request;
+@@ -749,6 +750,7 @@ struct ath12k {
+ 	u8 pdev_idx;
+ 	u8 lmac_id;
+ 	u8 hw_link_id;
++	u8 radio_idx;
+ 
+ 	struct completion peer_assoc_done;
+ 	struct completion peer_delete_done;
+--- a/drivers/net/wireless/ath/ath12k/debugfs.c
++++ b/drivers/net/wireless/ath/ath12k/debugfs.c
+@@ -1469,18 +1469,35 @@ void ath12k_debugfs_register(struct ath1
+ {
+ 	struct ath12k_base *ab = ar->ab;
+ 	struct ieee80211_hw *hw = ar->ah->hw;
+-	char pdev_name[5];
++	struct ath12k_hw *ah = ath12k_hw_to_ah(hw);
++	struct dentry *ath12k_fs;
+ 	char buf[100] = {};
++	char pdev_name[5];
+ 
+ 	scnprintf(pdev_name, sizeof(pdev_name), "%s%d", "mac", ar->pdev_idx);
+ 
+ 	ar->debug.debugfs_pdev = debugfs_create_dir(pdev_name, ab->debugfs_soc);
+ 
+ 	/* Create a symlink under ieee80211/phy* */
+-	scnprintf(buf, sizeof(buf), "../../ath12k/%pd2", ar->debug.debugfs_pdev);
+-	ar->debug.debugfs_pdev_symlink = debugfs_create_symlink("ath12k",
+-								hw->wiphy->debugfsdir,
+-								buf);
++	if (ar->radio_idx == 0) {
++		scnprintf(buf, sizeof(buf), "../../ath12k/%pd2",
++			  ar->debug.debugfs_pdev);
++		ath12k_fs = hw->wiphy->debugfsdir;
++
++		/* symbolic link for compatibility */
++		ar->debug.debugfs_pdev_symlink_default = debugfs_create_symlink("ath12k",
++										ath12k_fs,
++										buf);
++	}
++
++	if (ah->num_radio > 1) {
++		scnprintf(buf, sizeof(buf), "../../../ath12k/%pd2",
++			  ar->debug.debugfs_pdev);
++		ath12k_fs = hw->wiphy->radio_cfg[ar->radio_idx].radio_debugfsdir;
++		ar->debug.debugfs_pdev_symlink = debugfs_create_symlink("ath12k",
++									ath12k_fs,
++									buf);
++	}
+ 
+ 	if (ar->mac.sbands[NL80211_BAND_5GHZ].channels) {
+ 		debugfs_create_file("dfs_simulate_radar", 0200,
+@@ -1510,7 +1527,9 @@ void ath12k_debugfs_unregister(struct at
+ 
+ 	/* Remove symlink under ieee80211/phy* */
+ 	debugfs_remove(ar->debug.debugfs_pdev_symlink);
++	debugfs_remove(ar->debug.debugfs_pdev_symlink_default);
+ 	debugfs_remove_recursive(ar->debug.debugfs_pdev);
+ 	ar->debug.debugfs_pdev_symlink = NULL;
++	ar->debug.debugfs_pdev_symlink_default = NULL;
+ 	ar->debug.debugfs_pdev = NULL;
+ }
+--- a/drivers/net/wireless/ath/ath12k/mac.c
++++ b/drivers/net/wireless/ath/ath12k/mac.c
+@@ -14310,6 +14310,7 @@ static struct ath12k_hw *ath12k_mac_hw_a
+ 		ar->hw_link_id = pdev->hw_link_id;
+ 		ar->pdev = pdev;
+ 		ar->pdev_idx = pdev_idx;
++		ar->radio_idx = i;
+ 		pdev->ar = ar;
+ 
+ 		ag->hw_links[ar->hw_link_id].device_id = ab->device_id;
+@@ -14378,7 +14379,6 @@ int ath12k_mac_allocate(struct ath12k_hw
+ 		if (!ab)
+ 			continue;
+ 
+-		ath12k_debugfs_pdev_create(ab);
+ 		ath12k_mac_set_device_defaults(ab);
+ 		total_radio += ab->num_radios;
+ 	}
