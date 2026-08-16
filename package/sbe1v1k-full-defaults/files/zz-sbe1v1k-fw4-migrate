@@ -1,0 +1,17 @@
+#!/bin/sh
+
+# Older PassWall releases added fw3-only reload options.  Configuration is
+# preserved across sysupgrade, so PassWall's current uci-defaults migration
+# might already be whiteouted and cannot remove them itself.
+if [ -x /sbin/fw4 ]; then
+	changed=0
+	for section in passwall passwall_server; do
+		if uci -q get "firewall.${section}.reload" >/dev/null; then
+			uci -q delete "firewall.${section}.reload"
+			changed=1
+		fi
+	done
+	[ "$changed" -eq 0 ] || uci commit firewall
+fi
+
+exit 0

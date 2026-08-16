@@ -1,0 +1,10 @@
+#!/bin/sh
+
+# HAProxy's package includes an active example listener. It is useful to keep
+# installed for PassWall, but it must remain opt-in on a freshly flashed image.
+if [ -x /etc/init.d/haproxy ]; then
+	/etc/init.d/haproxy disable
+	/etc/init.d/haproxy stop
+fi
+
+exit 0
