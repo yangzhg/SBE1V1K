@@ -123,6 +123,8 @@ openwrt-qualcommbe-ipq95xx-askey_sbe1v1k-squashfs-sysupgrade.bin
 
 ## 6. 拆机与电气安全
 
+原厂固件免拆机取得 root 的方法见 `SBE1V1K-ROOT.md`（英文版 `SBE1V1K-ROOT.en.md`）；取得 root 后的刷机流程暂留空白，后续补充。
+
 ### 6.1 工具
 
 - 塑料撬片、合适的螺丝刀、绝缘镊子/瞬时探针。
@@ -207,7 +209,7 @@ bootm 0x80000000
 
 ## 9. 完整备份 eMMC
 
-整盘约 8 GB，不能假设路由器 `/tmp` 有足够空间。下面命令应在 PC 的 **Linux/WSL bash** 中运行，把数据经 SSH 流式保存。不要用旧版 Windows PowerShell 的 `>` 重定向二进制流。
+整盘约 8 GB，不能假设路由器 `/tmp` 有足够空间。下面命令应在 PC 的 **Linux/WSL bash** 中运行，把数据经 SSH 流式保存。不要用旧版 Windows PowerShell 的 `>` 重定向二进制流。提示：按 `SBE1V1K-ROOT.md` 取得原厂 root 后，这些 `dd` 命令原则上也可以直接在原厂系统的 SSH 中执行，从而不拆机完成备份。
 
 ```bash
 mkdir -p "$HOME/sbe1v1k-backup"

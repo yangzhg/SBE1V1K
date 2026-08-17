@@ -141,4 +141,4 @@ openwrt-qualcommbe-ipq95xx-askey_sbe1v1k-squashfs-factory.bin
 openwrt-qualcommbe-ipq95xx-askey_sbe1v1k-squashfs-sysupgrade.bin
 ```
 
-详细支持状态、拆机与刷机步骤见 `SBE1V1K-OpenWrt-Guide.md`。可选的 HTTP U-Boot chainloader 用法见 `SBE1V1K-UBOOT.md`。
+详细支持状态、拆机与刷机步骤见 `SBE1V1K-OpenWrt-Guide.md`。可选的 HTTP U-Boot chainloader 用法见 `SBE1V1K-UBOOT.md`。原厂固件免拆机 root 教程见 `SBE1V1K-ROOT.md`（英文版 `SBE1V1K-ROOT.en.md`）。

@@ -4,8 +4,10 @@
 > directly buildable OpenWrt tree with the pending SBE1V1K support integrated.
 > See [README-SBE1V1K.md](README-SBE1V1K.md) for the pinned source inputs and
 > build commands, [SBE1V1K-OpenWrt-Guide.md](SBE1V1K-OpenWrt-Guide.md) for
-> installation, and [SBE1V1K-UBOOT.md](SBE1V1K-UBOOT.md) for the optional HTTP
-> chainloader. This device support is not yet official OpenWrt support.
+> installation, [SBE1V1K-UBOOT.md](SBE1V1K-UBOOT.md) for the optional HTTP
+> chainloader, and [SBE1V1K-ROOT.en.md](SBE1V1K-ROOT.en.md) for the
+> no-disassembly stock-firmware root method. This device support is not yet
+> official OpenWrt support.
 
 OpenWrt Project is a Linux operating system targeting embedded devices. Instead
 of trying to create a single, static firmware, OpenWrt provides a fully
