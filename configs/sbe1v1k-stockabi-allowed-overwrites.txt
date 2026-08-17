@@ -1,0 +1,30 @@
+# Existing stock-root paths that management IPKs are allowed to replace.
+# Protected-path rules always take precedence over this list.
+
+etc/config/dropbear
+etc/config/rpcd
+etc/config/uhttpd
+etc/config/luci
+etc/config/dhcp
+etc/dnsmasq.conf
+etc/init.d/dropbear
+etc/init.d/dnsmasq
+etc/init.d/rpcd
+etc/init.d/uhttpd
+etc/uci-defaults/*
+usr/sbin/dropbear
+usr/sbin/dnsmasq
+sbin/rpcd
+usr/sbin/uhttpd
+usr/bin/dropbearkey
+usr/bin/scp
+usr/bin/ssh
+usr/bin/lua
+usr/lib/lua/*
+usr/lib/lua
+usr/lib/luci/*
+usr/lib/uhttpd_*.so
+usr/lib/rpcd/*
+usr/share/luci/*
+usr/share/rpcd/*
+www/*

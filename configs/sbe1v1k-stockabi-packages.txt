@@ -1,0 +1,34 @@
+# Exact package set merged into the stock rootfs.
+#
+# The IPK directory must contain one and only one build of every package below.
+# Add every matching QSDK r6 dependency name to this file and its exact IPK to
+# --ipk-dir; the builder does not download or recursively select dependencies.
+
+dropbear
+dnsmasq
+lua
+liblua
+libubus-lua
+libuci-lua
+luci-lib-base
+luci-lib-ip
+luci-lib-jsonc
+luci-lib-nixio
+liblucihttp
+liblucihttp-lua
+cgi-io
+rpcd
+rpcd-mod-luci
+rpcd-mod-file
+libiwinfo
+libiwinfo-lua
+rpcd-mod-iwinfo
+uhttpd
+uhttpd-mod-ubus
+luci-base
+luci-mod-admin-full
+luci-mod-network
+luci-mod-status
+luci-mod-system
+luci-theme-bootstrap
+luci-app-firewall

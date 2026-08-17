@@ -1,0 +1,95 @@
+#!/bin/sh
+# Copyright (C) 2006 OpenWrt.org
+# Copyright (C) 2010 Vertical Communications
+
+rootfs_data_fatal() {
+	echo "rootfs_data: $*" >&2
+	exit 1
+}
+
+find_verified_rootfs_data() {
+	local candidate partname partnum found helper count
+	found=
+	count=0
+
+	for candidate in /sys/block/mmcblk*/mmcblk*p*; do
+		[ -r "$candidate/uevent" ] || continue
+		partname="$(sed -n 's/^PARTNAME=//p' "$candidate/uevent")"
+		[ "$partname" = rootfs_data ] || continue
+		partnum="$(cat "$candidate/partition" 2>/dev/null)"
+		[ "$partnum" = 29 ] || rootfs_data_fatal \
+			"PARTNAME=rootfs_data resolved to unexpected partition $partnum"
+		found="/dev/${candidate##*/}"
+		count=$((count + 1))
+	done
+
+	[ "$count" -eq 1 ] || rootfs_data_fatal \
+		"expected one PARTNAME=rootfs_data partition, found $count"
+	[ "$found" = /dev/mmcblk0p29 ] || rootfs_data_fatal \
+		"verified rootfs_data is not the expected mmcblk0p29"
+	[ "$(cat /sys/class/block/mmcblk0p29/size 2>/dev/null)" = 1048576 ] || \
+		rootfs_data_fatal "verified p29 has an unexpected capacity"
+	[ "$(cat /sys/class/block/mmcblk0p29/ro 2>/dev/null)" = 0 ] || \
+		rootfs_data_fatal "verified p29 is read-only"
+	helper="$(find_mmc_part rootfs_data)"
+	[ "$helper" = "$found" ] || rootfs_data_fatal \
+		"find_mmc_part result does not match the unique p29 device"
+	[ -b "$found" ] || rootfs_data_fatal "verified p29 device is not a block device"
+	printf '%s\n' "$found"
+}
+
+prepare_rootfs_data() {
+	local device fstype blkid_status fsck_status
+	device="$(find_verified_rootfs_data)" || exit 1
+	fstype="$(/usr/sbin/blkid -s TYPE -o value "$device" 2>/dev/null)"
+	blkid_status=$?
+
+	case "$fstype:$blkid_status" in
+	ext4:0)
+		/usr/sbin/e2fsck -p "$device"
+		fsck_status=$?
+		case "$fsck_status" in
+		0 | 1) ;;
+		*) rootfs_data_fatal "e2fsck failed for p29 with status $fsck_status" ;;
+		esac
+		;;
+	:2)
+		dd if="$device" of=/tmp/rootfs_data.p29-prefix bs=4096 count=1 2>/dev/null || \
+			rootfs_data_fatal "could not read verified p29 prefix"
+		dd if=/dev/zero of=/tmp/rootfs_data.zero-prefix bs=4096 count=1 2>/dev/null || \
+			rootfs_data_fatal "could not create zero-prefix reference"
+		cmp -s /tmp/rootfs_data.p29-prefix /tmp/rootfs_data.zero-prefix || \
+			rootfs_data_fatal "blank-type p29 does not have the required zeroed prefix"
+		rm -f /tmp/rootfs_data.p29-prefix /tmp/rootfs_data.zero-prefix
+		/usr/sbin/mkfs.ext4 -F "$device" >/dev/null 2>&1 || \
+			rootfs_data_fatal "mkfs.ext4 failed for verified blank p29"
+		[ "$(/usr/sbin/blkid -s TYPE -o value "$device" 2>/dev/null)" = ext4 ] || \
+			rootfs_data_fatal "new p29 filesystem did not verify as ext4"
+		;;
+	*)
+		rootfs_data_fatal \
+			"refusing p29 filesystem type '${fstype:-unknown}' (blkid=$blkid_status)"
+		;;
+	esac
+
+	ROOTFS_DATA_DEVICE="$device"
+	export ROOTFS_DATA_DEVICE
+}
+
+do_mount_root() {
+	prepare_rootfs_data
+	mount_root || rootfs_data_fatal "mount_root failed"
+	awk -v device="$ROOTFS_DATA_DEVICE" '
+		$1 == device && $2 == "/overlay" && $3 == "ext4" { found = 1 }
+		END { exit(found ? 0 : 1) }
+	' /proc/mounts || rootfs_data_fatal "verified p29 is not mounted on /overlay as ext4"
+	boot_run_hook preinit_mount_root
+	[ -f /sysupgrade.tgz ] && {
+		echo "- config restore -"
+		cd /
+		tar xzf /sysupgrade.tgz
+		sync
+	}
+}
+
+[ "$INITRAMFS" = "1" ] || boot_hook_add preinit_main do_mount_root

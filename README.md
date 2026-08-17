@@ -9,6 +9,12 @@
 > no-disassembly stock-firmware root method. This device support is not yet
 > official OpenWrt support.
 
+For the separate private QSDK 12.2 stock-ABI + LuCI remaster workflow, start
+with [SBE1V1K-QSDK-12.2-STOCKABI-HANDOFF.md](SBE1V1K-QSDK-12.2-STOCKABI-HANDOFF.md)
+and the detailed [design and safety specification](SBE1V1K-QSDK-12.2-CLEAN-OPENWRT.md).
+That workflow currently produces candidate artifacts only; no prebuilt vendor
+binary is stored in this repository.
+
 OpenWrt Project is a Linux operating system targeting embedded devices. Instead
 of trying to create a single, static firmware, OpenWrt provides a fully
 writable filesystem with package management. This frees you from the

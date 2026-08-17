@@ -1,0 +1,3 @@
+#!/bin/sh
+
+# Vendor data partitions are intentionally not mounted or formatted.

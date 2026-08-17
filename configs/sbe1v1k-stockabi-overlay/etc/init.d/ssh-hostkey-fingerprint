@@ -1,0 +1,16 @@
+#!/bin/sh /etc/rc.common
+
+START=51
+
+start() {
+	local key fingerprint
+
+	for key in /etc/dropbear/dropbear_*_host_key; do
+		[ -f "$key" ] || continue
+		fingerprint="$(/usr/bin/dropbearkey -y -f "$key" 2>/dev/null | \
+			sed -n 's/^Fingerprint:[[:space:]]*//p')"
+		[ -n "$fingerprint" ] || continue
+		printf 'SBE1V1K SSH host key %s: %s\n' \
+			"${key##*/}" "$fingerprint" >/dev/console
+	done
+}

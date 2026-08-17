@@ -1,0 +1,57 @@
+#!/bin/sh
+
+. /lib/functions.sh
+. /usr/share/libubox/jshn.sh
+
+export FORCE=0
+export SAVE_CONFIG=0
+
+include /lib/upgrade
+
+stage2_fail() {
+	v "Upgrade aborted: $*"
+	sync
+	reboot -f
+	sleep 5
+	echo b 2>/dev/null >/proc/sysrq-trigger
+	exit 1
+}
+
+awk '$2 == "/" && ($3 == "tmpfs" || $3 == "ramfs") { found = 1 }
+	END { exit(found ? 0 : 1) }' /proc/mounts || \
+	stage2_fail 'stage2 is not running from a RAMFS root'
+
+[ -z "${UPGRADE_BACKUP:-}" ] || stage2_fail 'configuration backup is not supported'
+[ -n "${IMAGE:-}" ] && [ -f "$IMAGE" ] || stage2_fail 'staged image is missing'
+type platform_check_image >/dev/null 2>&1 || stage2_fail 'platform validation is unavailable'
+type platform_do_upgrade >/dev/null 2>&1 || stage2_fail 'platform writer is unavailable'
+
+for utility in awk basename cat cmp cut dd grep head hexdump reboot rm sed \
+	sha256sum sleep sort sync tar wc; do
+	command -v "$utility" >/dev/null 2>&1 || \
+		stage2_fail "required RAMFS utility is missing: $utility"
+done
+for executable in \
+	/usr/bin/fwtool \
+	/usr/bin/jshn \
+	/usr/libexec/validate_firmware_image; do
+	[ -x "$executable" ] || stage2_fail "required RAMFS executable is missing: $executable"
+done
+[ -r /usr/share/libubox/jshn.sh ] || stage2_fail 'jshn shell library is missing in RAMFS'
+
+validation="$(/usr/libexec/validate_firmware_image "$IMAGE")" || \
+	stage2_fail 'firmware validator failed in stage2'
+json_load "$validation" || stage2_fail 'firmware validator returned invalid JSON'
+json_get_var valid valid
+[ "$valid" = 1 ] || stage2_fail 'firmware validator rejected the staged image'
+platform_check_image "$IMAGE" || stage2_fail 'platform check rejected the staged image'
+
+v 'Performing validated p25/p27 system upgrade...'
+platform_do_upgrade "$IMAGE" || stage2_fail 'p25/p27 write or verification failed'
+sync || stage2_fail 'final storage flush failed'
+
+v 'Upgrade completed; rebooting system...'
+sleep 1
+reboot -f
+sleep 5
+echo b 2>/dev/null >/proc/sysrq-trigger

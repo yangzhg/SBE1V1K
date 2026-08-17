@@ -1,0 +1,28 @@
+#!/bin/sh
+
+# Vendor tmpfs bind overlays are intentionally disabled. The stock fstools
+# binaries mount the persistent rootfs_data partition.
+
+mkdir -p /tmp/etc/modules.d
+cat > /tmp/etc/modules.d/nf-nathelper-extra <<'EOF'
+nf_conntrack_amanda
+nf_conntrack_broadcast
+nf_conntrack_h323
+nf_conntrack_irc
+nf_conntrack_pptp
+nf_conntrack_sip
+nf_conntrack_snmp
+nf_conntrack_tftp
+nf_nat_amanda
+nf_nat_h323
+nf_nat_irc
+nf_nat_pptp
+nf_nat_sip
+nf_nat_snmp_basic
+nf_nat_tftp
+EOF
+
+cat > /tmp/etc/modules.d/ipt-nathelper-rtsp <<'EOF'
+nf_conntrack_rtsp
+nf_nat_rtsp
+EOF

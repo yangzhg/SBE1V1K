@@ -1,0 +1,30 @@
+#!/bin/sh /etc/rc.common
+
+START=60
+USE_PROCD=1
+QUIET=""
+
+service_triggers() {
+	procd_add_reload_trigger firewall
+}
+
+restart() {
+	fw3 restart
+}
+
+start_service() {
+	fw3 ${QUIET} start
+}
+
+stop_service() {
+	fw3 flush
+}
+
+reload_service() {
+	fw3 reload
+}
+
+boot() {
+	QUIET=-q
+	start
+}

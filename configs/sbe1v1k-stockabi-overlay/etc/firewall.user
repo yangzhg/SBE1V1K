@@ -1,0 +1,3 @@
+#!/bin/sh
+
+# Intentionally empty. Local rules belong in the persistent p29 overlay.

@@ -1,0 +1,3 @@
+#!/bin/sh
+
+# Intentionally empty. netifd owns routes and resolver state.

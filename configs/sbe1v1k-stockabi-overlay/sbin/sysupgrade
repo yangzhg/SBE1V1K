@@ -1,0 +1,128 @@
+#!/bin/sh
+
+. /lib/functions.sh
+. /lib/functions/system.sh
+. /usr/share/libubox/jshn.sh
+
+COMMAND=/lib/upgrade/do_stage2
+TEST=0
+NO_KEEP=0
+HELP=0
+
+export INTERACTIVE=0
+export VERBOSE=1
+export SAVE_CONFIG=0
+export FORCE=0
+export CONFFILES=/tmp/sysupgrade.conffiles
+
+usage() {
+	cat <<'EOF'
+Usage: sysupgrade -n <image>
+       sysupgrade -T <image>
+
+  -n           flash without retaining configuration (required)
+  -T, --test   validate only; do not copy, stop services, or write partitions
+  -q           less verbose
+  -v           more verbose
+  -h, --help   show this help
+
+This stock-ABI image deliberately rejects -F and configuration preservation.
+EOF
+}
+
+fail() {
+	echo "sysupgrade: $*" >&2
+	exit 1
+}
+
+while [ "$#" -gt 0 ]; do
+	case "$1" in
+	-n) NO_KEEP=1 ;;
+	-T | --test) TEST=1 ;;
+	-q) VERBOSE=$((VERBOSE - 1)); export VERBOSE ;;
+	-v) VERBOSE=$((VERBOSE + 1)); export VERBOSE ;;
+	-F | --force) fail 'force mode is disabled for this device' ;;
+	-h | --help) HELP=1 ;;
+	--) shift; break ;;
+	-*) fail "unsupported option: $1" ;;
+	*) break ;;
+	esac
+	shift
+done
+
+if [ "$HELP" -eq 1 ]; then
+	usage
+	exit 0
+fi
+[ "$#" -eq 1 ] || { usage >&2; exit 1; }
+[ "$TEST" -eq 1 ] || [ "$NO_KEEP" -eq 1 ] || \
+	fail 'configuration preservation is unsupported; run sysupgrade -n'
+[ -z "${FAILSAFE:-}" ] || fail 'upgrades from failsafe mode are disabled'
+
+IMAGE="$(readlink -f "$1")"
+[ -n "$IMAGE" ] && [ -f "$IMAGE" ] && [ -r "$IMAGE" ] || fail 'image is not a readable file'
+
+include /lib/upgrade
+type platform_check_image >/dev/null 2>&1 || fail 'platform image validation is unavailable'
+
+validate_image() {
+	local image result valid
+	image="$1"
+	result="$(/usr/libexec/validate_firmware_image "$image")" || return 1
+	json_load "$result" || return 1
+	json_get_var valid valid
+	[ "$valid" = 1 ] || return 1
+	platform_check_image "$image" || return 1
+}
+
+validate_image "$IMAGE" || fail 'image validation failed'
+if [ "$TEST" -eq 1 ]; then
+	echo 'Image validated; no changes were made.'
+	exit 0
+fi
+
+exec 9>/tmp/firmware_upgrade.lock || fail 'could not open the upgrade lock'
+flock -n 9 || fail 'another firmware upgrade is already in progress'
+
+STAGED_IMAGE=/tmp/sbe1v1k-stockabi-sysupgrade.bin
+if [ "$IMAGE" != "$STAGED_IMAGE" ]; then
+	cp -f "$IMAGE" "$STAGED_IMAGE" || fail 'could not stage image in /tmp'
+	IMAGE="$STAGED_IMAGE"
+fi
+validate_image "$IMAGE" || fail 'staged image validation failed'
+
+image_bytes="$(wc -c < "$IMAGE")"
+case "$image_bytes" in
+'' | *[!0-9]*) fail 'could not determine staged image size' ;;
+esac
+required_tmp_kib=$(((image_bytes * 3 + 1023) / 1024))
+[ "$required_tmp_kib" -ge 262144 ] || required_tmp_kib=262144
+available_tmp_kib="$(df -kP /tmp | awk 'NR > 1 { value = $4 } END { print value }')"
+case "$available_tmp_kib" in
+'' | *[!0-9]*) fail 'could not determine available /tmp space' ;;
+esac
+[ "$available_tmp_kib" -ge "$required_tmp_kib" ] || \
+	fail "insufficient /tmp space: need ${required_tmp_kib} KiB, have ${available_tmp_kib} KiB"
+
+[ "${RAM_ROOT:-}" = /tmp/root ] || fail 'unexpected RAMFS staging root'
+ram_root_entry=
+if [ -e "$RAM_ROOT" ] || [ -L "$RAM_ROOT" ]; then
+	[ -d "$RAM_ROOT" ] && [ ! -L "$RAM_ROOT" ] || \
+		fail 'RAMFS staging root is not a real directory'
+	ram_root_entry="$(find "$RAM_ROOT" -mindepth 1 -maxdepth 1 -print -quit)" || \
+		fail 'could not inspect RAMFS staging root'
+	[ -z "$ram_root_entry" ] || \
+		fail 'RAMFS staging root is not empty; reboot before retrying the upgrade'
+fi
+
+install_bin /sbin/upgraded
+[ -x "$RAM_ROOT/sbin/upgraded" ] || fail 'could not stage upgraded in RAMFS'
+v 'Commencing validated no-config upgrade. Closing all shell sessions.'
+json_init
+json_add_string prefix "$RAM_ROOT"
+json_add_string path "$IMAGE"
+json_add_string command "$COMMAND"
+json_add_object options
+json_add_int save_partitions 0
+json_close_object
+ubus call system sysupgrade "$(json_dump)" || fail 'ubus rejected the upgrade request'

@@ -1,0 +1,40 @@
+# The only services allowed to have rc.d links in the finished image.
+# Their START/STOP values come from the matching init scripts; list order does
+# not assign priorities. qca-nss-ppe-ds is intentionally not enabled here.
+
+wifi_fw_mount
+sysfixtime
+SI_eye_diagram
+license-pfm
+load_cnss2
+askey_pwm
+boot
+ftm
+qca-acfg
+qcawifi-config-cmd
+qca-hostapd
+qca-wpa-supplicant
+qca_pta_config
+sysctl
+syslog
+system
+qca-ssdk
+qca-nss-dp
+network
+qca-nss-ecm
+01_skb_recycler
+firewall
+cron
+rngd
+done
+led
+wifi_fw_done
+powerctl
+thermal
+time-services
+urandom_seed
+dnsmasq
+dropbear
+ssh-hostkey-fingerprint
+rpcd
+uhttpd

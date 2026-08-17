@@ -1,0 +1,20 @@
+# Vendor control-plane services disabled in the remastered image.
+# QCA data-plane, Wi-Fi, thermal, fan and license services are deliberately
+# absent from this list.
+
+lighttpd
+opensync
+manager
+openvswitch
+cujo-user
+samknows
+ookla
+iot_upgrade
+healthcheck
+update_vendor_data
+default_ssid_key
+process_crash_dump
+verify_ib
+secure_key
+sstorage
+socat

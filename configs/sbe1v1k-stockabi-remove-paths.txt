@@ -1,0 +1,28 @@
+# Exact stock-root paths removed before management IPKs are merged.
+# These are vendor web/cloud entry points, not QCA acceleration components.
+
+.version
+etc/config/cloud_config
+etc/config/opensync-default
+etc/config/socat
+etc/sign/public.key
+etc/lighttpd
+etc/miniupnpd
+etc/hotplug.d/iface/50-miniupnpd
+etc/init.d/miniupnpd
+etc/init.d/opensync
+etc/opkg/customfeeds.conf
+etc/opkg/distfeeds.conf
+etc/opkg/feeds.conf
+etc/uhttpd.crt
+etc/uhttpd.key
+etc/uci-defaults/qca-mcsd
+etc/uci-defaults/99-miniupnpd
+opt/cujo/etc
+usr/askey/server_rsakey.pem
+usr/lib/lua/luci
+usr/opensync
+usr/sbin/miniupnpd
+usr/share/luci
+usr/share/miniupnpd
+www
