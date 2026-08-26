@@ -1,0 +1,37 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Gabor Juhos <j4g8y7@gmail.com>
+Date: Tue, 16 Dec 2025 19:38:00 +0100
+Subject: [PATCH] regulator: qcom_smd: change MP5496 supply names
+
+The MP5496 regulator data uses the regulator output name as its input
+supply name.  This can make the regulator core resolve an output to
+itself and reject it, for example:
+
+  Supply for s1 (s1) resolved to itself
+
+Use the MP5496 input pin names from the datasheet.  Buck 1 is supplied
+by VIN1, while Buck 2 and LDO2 share VIN2.  LDO5 is supplied by VIN5.
+
+Link: https://lore.kernel.org/r/20251216-qcom_smd-mp5496-supply-fix-v1-1-f9b5e70536de@gmail.com
+Signed-off-by: Gabor Juhos <j4g8y7@gmail.com>
+---
+ drivers/regulator/qcom_smd-regulator.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+--- a/drivers/regulator/qcom_smd-regulator.c
++++ b/drivers/regulator/qcom_smd-regulator.c
+@@ -801,10 +801,10 @@ struct rpm_regulator_data {
+ };
+ 
+ static const struct rpm_regulator_data rpm_mp5496_regulators[] = {
+-	{ "s1", QCOM_SMD_RPM_SMPA, 1, &mp5496_smps, "s1" },
+-	{ "s2", QCOM_SMD_RPM_SMPA, 2, &mp5496_smps, "s2" },
+-	{ "l2", QCOM_SMD_RPM_LDOA, 2, &mp5496_ldoa2, "l2" },
+-	{ "l5", QCOM_SMD_RPM_LDOA, 5, &mp5496_ldoa2, "l5" },
++	{ "s1", QCOM_SMD_RPM_SMPA, 1, &mp5496_smps, "vin1" },
++	{ "s2", QCOM_SMD_RPM_SMPA, 2, &mp5496_smps, "vin2" },
++	{ "l2", QCOM_SMD_RPM_LDOA, 2, &mp5496_ldoa2, "vin2" },
++	{ "l5", QCOM_SMD_RPM_LDOA, 5, &mp5496_ldoa2, "vin5" },
+ 	{}
+ };
+ 
