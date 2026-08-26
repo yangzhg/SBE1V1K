@@ -1,0 +1,47 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+Subject: [PATCH] wifi: ath12k: use WSI index for hardware group order
+
+ath12k derives a stable index for each device in a WSI group from the
+device-tree graph, with the WSI controller at index zero. However, it
+stores devices in the hardware group by probe completion order instead.
+This makes the combined wiphy radio order vary across cold boots.
+
+Use the validated WSI index as the hardware-group device ID. Keep
+num_probed as a count, and reject invalid or duplicate indices by falling
+back to the existing single-device grouping path.
+---
+ drivers/net/wireless/ath/ath12k/core.c | 20 +++++++++++++++++---
+ 1 file changed, 17 insertions(+), 3 deletions(-)
+
+--- a/drivers/net/wireless/ath/ath12k/core.c
++++ b/drivers/net/wireless/ath/ath12k/core.c
+@@ -1990,12 +1990,26 @@ exit:
+ 		goto invalid_group;
+ 	}
+ 
+-	ab->device_id = ag->num_probed++;
++	if (wsi->index >= ag->num_devices) {
++		ath12k_warn(ab, "invalid WSI index %u for group with %d devices\n",
++			    wsi->index, ag->num_devices);
++		goto invalid_group;
++	}
++
++	if (ag->ab[wsi->index]) {
++		ath12k_warn(ab, "duplicate WSI index %u in group %d\n",
++			    wsi->index, ag->id);
++		goto invalid_group;
++	}
++
++	ab->device_id = wsi->index;
+ 	ag->ab[ab->device_id] = ab;
++	ag->num_probed++;
+ 	ab->ag = ag;
+ 
+-	ath12k_dbg(ab, ATH12K_DBG_BOOT, "wsi group-id %d num-devices %d index %d",
+-		   ag->id, ag->num_devices, wsi->index);
++	ath12k_dbg(ab, ATH12K_DBG_BOOT,
++		   "wsi group-id %d num-devices %d index %d device-id %d\n",
++		   ag->id, ag->num_devices, wsi->index, ab->device_id);
+ 
+ 	return ag;
+ }

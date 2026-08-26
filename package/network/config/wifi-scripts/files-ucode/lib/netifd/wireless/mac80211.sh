@@ -2,7 +2,7 @@
 
 'use strict';
 
-import { set_default, log } from 'wifi.common';
+import { set_default, log, wiphy_info, wiphy_band } from 'wifi.common';
 import { validate, dump_options } from 'wifi.validate';
 import * as supplicant from 'wifi.supplicant';
 import * as hostapd from 'wifi.hostapd';
@@ -64,6 +64,43 @@ function get_channel_frequency(band, channel) {
 	}
 }
 
+function radio_supports_band(radio, band) {
+	for (let freq in band?.freqs ?? []) {
+		let khz = freq.freq * 1000;
+
+		for (let range in radio.freq_ranges ?? [])
+			if (khz >= range.start && khz <= range.end)
+				return true;
+	}
+
+	return false;
+}
+
+function resolve_radio_for_band(phy, config) {
+	if (config.radio == null)
+		return;
+
+	let info = wiphy_info(phy);
+	if (!info?.radios || length(info.radios) < 2)
+		return;
+
+	let band = wiphy_band(info, config.band);
+	if (!band)
+		return;
+
+	let matches = filter(info.radios,
+		(radio) => radio_supports_band(radio, band));
+	if (length(matches) != 1)
+		return;
+
+	let radio = matches[0].index;
+	if (+config.radio == radio)
+		return;
+
+	log(`Remapping '${phy}' ${config.band} from radio ${config.radio} to ${radio}`);
+	config.radio = radio;
+}
+
 function setup_phy(phy, config, data) {
 	if (config.channel == "auto")
 		config.channel = 0;
@@ -103,9 +140,9 @@ function setup_phy(phy, config, data) {
 	log(`Configuring '${phy}' distance: ${config.distance}`);
 	if (antenna_changed) {
 		log(`Setting antenna for '${phy}' txantenna: ${config.txantenna}, rxantenna: ${config.rxantenna}`);
-		system(`iw phy ${phy} set antenna ${config.txantenna} ${config.rxantenna}`);
+		system(`iw phy ${phy} set antenna ${config.txantenna} ${config.rxantenna} >/dev/null 2>&1`);
 	}
-	system(`iw phy ${phy} set distance ${config.distance}`);
+	system(`iw phy ${phy} set distance ${config.distance} >/dev/null 2>&1`);
 	system(`iw phy ${phy} set txpower ${config.txpower}`);
 
 	if (config.frag)
@@ -173,14 +210,6 @@ function setup() {
 		netifd.set_retry(false);
 		return 1;
 	}
-	data.phy_suffix = phy_suffix(data.config.radio, ":");
-	data.vif_phy_suffix = phy_suffix(data.config.radio, ".");
-	data.ifname_prefix = data.config.ifname_prefix;
-	if (!data.ifname_prefix)
-		data.ifname_prefix = data.phy + data.vif_phy_suffix + "-";
-	let active_ifnames = [];
-
-	log('Starting');
 
 	let config = data.config;
 
@@ -204,6 +233,16 @@ function setup() {
 		}
 	}
 	delete config.hwmode;
+	resolve_radio_for_band(data.phy, config);
+
+	data.phy_suffix = phy_suffix(config.radio, ":");
+	data.vif_phy_suffix = phy_suffix(config.radio, ".");
+	data.ifname_prefix = config.ifname_prefix;
+	if (!data.ifname_prefix)
+		data.ifname_prefix = data.phy + data.vif_phy_suffix + "-";
+	let active_ifnames = [];
+
+	log('Starting');
 
 	validate('device', config);
 	setup_phy(data.phy, data.config, data.data);

@@ -1,0 +1,50 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+Subject: [PATCH] wifi: ath12k: log WMI control service topology
+
+When a secondary WMI control service connection fails, the existing log
+only reports the errno. Record the endpoint request and the hardware/WSI
+topology so failures can be correlated with firmware-advertised radio
+counts and device ordering. This is diagnostic only and does not change
+endpoint selection or error handling.
+---
+ drivers/net/wireless/ath/ath12k/wmi.c | 21 +++++++++++++++++++--
+ 1 file changed, 19 insertions(+), 2 deletions(-)
+
+--- a/drivers/net/wireless/ath/ath12k/wmi.c
++++ b/drivers/net/wireless/ath/ath12k/wmi.c
+@@ -9901,5 +9901,7 @@ static int ath12k_connect_pdev_htc_servi
+ {
+ 	int status;
++	struct ath12k_hw_group *ag = ath12k_ab_to_ag(ab);
++	bool wsi_controller;
+ 	static const u32 svc_id[] = {
+ 		ATH12K_HTC_SVC_ID_WMI_CONTROL,
+ 		ATH12K_HTC_SVC_ID_WMI_CONTROL_MAC1,
+@@ -9919,10 +9921,25 @@ static int ath12k_connect_pdev_htc_servi
+ 	/* connect to control service */
+ 	conn_req.service_id = svc_id[pdev_idx];
+ 
++	wsi_controller = ab->dev->of_node &&
++		of_property_read_bool(ab->dev->of_node, "qcom,wsi-controller");
++
++	ath12k_dbg(ab, ATH12K_DBG_WMI,
++		   "WMI control connect pdev %u service 0x%x endpoints %d max-radios %d qmi-radios %d group-id %d wsi-index %u device-id %d wsi-controller %d\n",
++		   pdev_idx, conn_req.service_id, ab->htc.wmi_ep_count,
++		   ab->hw_params->max_radios, ab->qmi.num_radios,
++		   ag ? ag->id : ATH12K_INVALID_GROUP_ID, ab->wsi_info.index,
++		   ab->device_id, wsi_controller);
++
+ 	status = ath12k_htc_connect_service(&ab->htc, &conn_req, &conn_resp);
+ 	if (status) {
+-		ath12k_warn(ab, "failed to connect to WMI CONTROL service status: %d\n",
+-			    status);
++		ath12k_warn(ab,
++			    "failed to connect WMI control pdev %u service 0x%x: %d (endpoints %d max-radios %d qmi-radios %d group-id %d wsi-index %u device-id %d wsi-controller %d)\n",
++			    pdev_idx, conn_req.service_id, status,
++			    ab->htc.wmi_ep_count, ab->hw_params->max_radios,
++			    ab->qmi.num_radios,
++			    ag ? ag->id : ATH12K_INVALID_GROUP_ID,
++			    ab->wsi_info.index, ab->device_id, wsi_controller);
+ 		return status;
+ 	}
+ 
