@@ -23,12 +23,24 @@
 
 	chosen {
 		stdout-path = "serial0:115200n8";
+		bootargs = "cma=256M";
 	};
 
 	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
 		tzapp:tzapp@49B00000 {
 			no-map;
 			reg = <0x0 0x49B00000 0x0 0x00600000>;
+		};
+
+		linux,cma {
+			compatible = "shared-dma-pool";
+			reusable;
+			size = <0x0 0x10000000>; /* 256MB = 0x10000000 */
+			linux,cma-default;
 		};
 	};
 
