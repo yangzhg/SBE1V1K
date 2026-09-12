@@ -12,7 +12,7 @@ Subject: [PATCH] wifi: ath12k: handle empty regulatory events
         u32 num_6g_reg_rules_cl[WMI_REG_CURRENT_MAX_AP_TYPE][WMI_REG_MAX_CLIENT_TYPE];
         u8 num_invalid_5ghz_ext_rules;
 -       u32 total_reg_rules = 0;
-+       u32 status_code, total_reg_rules = 0;
++       u32 status_code __maybe_unused, total_reg_rules = 0;
         int ret, i, j;
  
         ath12k_dbg(ab, ATH12K_DBG_WMI, "processing regulatory ext channel list
