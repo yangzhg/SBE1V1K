@@ -23,10 +23,10 @@ Link: https://lists.infradead.org/pipermail/ath12k/2023-October/000889.html
 --- a/drivers/net/wireless/ath/ath12k/wmi.h
 +++ b/drivers/net/wireless/ath/ath12k/wmi.h
 @@ -2330,6 +2330,7 @@ enum wmi_direct_buffer_module {
- 	WMI_DIRECT_BUF_SPECTRAL = 0,
- 	WMI_DIRECT_BUF_CFR = 1,
-+	WMI_DIRECT_BUF_CV_UPLOAD = 2,
+        WMI_DIRECT_BUF_SPECTRAL = 0,
+        WMI_DIRECT_BUF_CFR = 1,
++       WMI_DIRECT_BUF_CV_UPLOAD = 2,
  
- 	/* keep it last */
- 	WMI_DIRECT_BUF_MAX
+        /* keep it last */
+        WMI_DIRECT_BUF_MAX
  };
