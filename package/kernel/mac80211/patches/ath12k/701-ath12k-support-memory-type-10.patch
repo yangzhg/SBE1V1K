@@ -1,0 +1,17 @@
+From: Jackie <jackie.han@gmail.com>
+Date: Sat, 12 Sep 2026 08:30:00 +0800
+Subject: [PATCH] wifi: ath12k: workaround for unsupported memory type 10
+
+Add support for QMI memory region type 10 to prevent firmware boot failure
+on QCN9274 hw2.0.
+
+--- a/drivers/net/wireless/ath/ath12k/qmi.c
++++ b/drivers/net/wireless/ath/ath12k/qmi.c
+@@ -2651,6 +2651,7 @@ static int ath12k_qmi_alloc_target_mem_c
+                case PAGEABLE_MEM_REGION_TYPE:
+                case CALDB_MEM_REGION_TYPE:
+                case LPASS_SHARED_V01_REGION_TYPE:
++               case 10:
+                        ret = ath12k_qmi_alloc_chunk(ab, chunk);
+                        if (ret)
+                                goto err;
