@@ -13,35 +13,39 @@ back to the existing single-device grouping path.
  drivers/net/wireless/ath/ath12k/core.c | 20 +++++++++++++++++---
  1 file changed, 17 insertions(+), 3 deletions(-)
 
+diff --git a/drivers/net/wireless/ath/ath12k/core.c b/drivers/net/wireless/ath/ath12k/core.c
+index 8bf83af..78717ba 100644
 --- a/drivers/net/wireless/ath/ath12k/core.c
 +++ b/drivers/net/wireless/ath/ath12k/core.c
-@@ -1990,12 +1990,26 @@ exit:
- 		goto invalid_group;
- 	}
+@@ -2071,14 +2071,28 @@ exit:
+                goto invalid_group;
+        }
  
--	ab->device_id = ag->num_probed++;
-+	if (wsi->index >= ag->num_devices) {
-+		ath12k_warn(ab, "invalid WSI index %u for group with %d devices\n",
-+			    wsi->index, ag->num_devices);
-+		goto invalid_group;
-+	}
+-       ab->device_id = ag->num_probed++;
++       if (wsi->index >= ag->num_devices) {
++               ath12k_warn(ab, "invalid WSI index %u for group with %d devices\n",
++                           wsi->index, ag->num_devices);
++               goto invalid_group;
++       }
 +
-+	if (ag->ab[wsi->index]) {
-+		ath12k_warn(ab, "duplicate WSI index %u in group %d\n",
-+			    wsi->index, ag->id);
-+		goto invalid_group;
-+	}
++       if (ag->ab[wsi->index]) {
++               ath12k_warn(ab, "duplicate WSI index %u in group %d\n",
++                           wsi->index, ag->id);
++               goto invalid_group;
++       }
 +
-+	ab->device_id = wsi->index;
- 	ag->ab[ab->device_id] = ab;
-+	ag->num_probed++;
- 	ab->ag = ag;
++       ab->device_id = wsi->index;
+        ag->ab[ab->device_id] = ab;
++       ag->num_probed++;
+        ab->ag = ag;
  
--	ath12k_dbg(ab, ATH12K_DBG_BOOT, "wsi group-id %d num-devices %d index %d",
--		   ag->id, ag->num_devices, wsi->index);
-+	ath12k_dbg(ab, ATH12K_DBG_BOOT,
-+		   "wsi group-id %d num-devices %d index %d device-id %d\n",
-+		   ag->id, ag->num_devices, wsi->index, ab->device_id);
+        ath12k_dp_cmn_hw_group_assign(ath12k_ab_to_dp(ab), ag);
  
- 	return ag;
+-       ath12k_dbg(ab, ATH12K_DBG_BOOT, "wsi group-id %d num-devices %d index %d",
+-                  ag->id, ag->num_devices, wsi->index);
++       ath12k_dbg(ab, ATH12K_DBG_BOOT,
++                  "wsi group-id %d num-devices %d index %d device-id %d\n",
++                  ag->id, ag->num_devices, wsi->index, ab->device_id);
+ 
+        return ag;
  }
