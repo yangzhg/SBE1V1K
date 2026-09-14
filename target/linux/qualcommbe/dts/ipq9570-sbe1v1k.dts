@@ -23,12 +23,24 @@
 
 	chosen {
 		stdout-path = "serial0:115200n8";
+		bootargs = "cma=256M";
 	};
 
 	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
 		tzapp:tzapp@49B00000 {
 			no-map;
 			reg = <0x0 0x49B00000 0x0 0x00600000>;
+		};
+
+		linux,cma {
+			compatible = "shared-dma-pool";
+			reusable;
+			size = <0x0 0x10000000>; /* 256MB = 0x10000000 */
+			linux,cma-default;
 		};
 	};
 
@@ -197,13 +209,15 @@
 		* the regulators are brought up with 725mV which is sufficient for all the
 		* corner parts to operate at 800MHz
 		*/
-			regulator-min-microvolt = <725000>;
+			regulator-min-microvolt = <587500>;
 			regulator-max-microvolt = <1075000>;
+			regulator-always-on;
+			regulator-boot-on;
 		};
 
-		mp5496_l5: l5 {
-			regulator-min-microvolt = <1800000>;
-			regulator-max-microvolt = <1800000>;
+		ipq9574_s2: s2 {
+			regulator-min-microvolt = <700000>;
+			regulator-max-microvolt = <1000000>;
 			regulator-always-on;
 			regulator-boot-on;
 		};
